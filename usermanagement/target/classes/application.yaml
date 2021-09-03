@@ -1,0 +1,17 @@
+api:
+  version: v1
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+  folder: ./logs
+
+  #Mongo
+spring:
+  data:
+    mongodb:
+      host: ${MONGODB_HOST:localhost}
+      port: ${MONGODB_PORT:27017}
+      database: sampledb
+      

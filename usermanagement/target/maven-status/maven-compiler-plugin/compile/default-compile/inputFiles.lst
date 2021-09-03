@@ -1,0 +1,6 @@
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/validator/UserValidations.java
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/SwaggerConfig.java
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/entity/User.java
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/UserManagementApplication.java
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/UserController.java
+/home/angiak/repos/k8s-training/usermanagement/src/main/java/main/java/com/example/usermanagement/UserMongoRepository.java
