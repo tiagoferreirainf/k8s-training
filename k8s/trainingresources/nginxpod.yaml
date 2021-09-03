@@ -1,0 +1,14 @@
+apiVersion: v1   # Which version of the Kubernetes API you're using to create this object
+kind: Pod        # What kind of object you want to create
+metadata:        # Data that helps uniquely identify the object, name string, labels, namespace
+  labels:
+    run: nginx
+  name: nginx
+spec:            # Configuration of the object you are creating
+  containers:
+    - image: nginx
+      name: nginx
+      resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}       # Populated afterward when object is deployed in the cluster

@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - image: nginx
+          name: nginx
+          resources:
+            # The minimum resources that node should have available to schedule this pod
+            requests:
+              memory: 250Mi
+              cpu: 100m
+            # The maximum resources that node should have to schedule,
+            # and container cannot surpass
+            limits:
+              memory: 500Mi
+              cpu: 200m

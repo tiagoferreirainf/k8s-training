@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    #name of the ingress controller alb, nginx, etc
+    kubernetes.io/ingress.class: alb
+    #Annotations bellow are used and specific for the ingress controller
+    alb.ingress.kubernetes.io/group.name: minimal
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  name: minimal
+  namespace: student1
+spec:
+  rules:
+    - http:
+        paths:
+          - backend:
+              service:
+                name: clusterip-service
+                port:
+                  number: 80
+            path: /
+            pathType: ImplementationSpecific

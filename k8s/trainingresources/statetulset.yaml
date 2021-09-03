@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  labels:
+    app: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  serviceName: service-mongo  # name of the service that will be used
+  replicas: 1
+  #manages pod sequentially and are removed in reverse order, it can be "parallel"
+  podManagementPolicy: "OrderedReady"
+  revisionHistoryLimit: 10
+  updateStrategy:
+    #rollingupdate or recreate
+    type: "RollingUpdate"
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      #Always, OnFailure, and Never
+      restartPolicy: "Always"
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: mongo
+          image: "docker.io/mongo:4.2"
+          #Always, IfNotPresent
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - name: http
+              containerPort: 27017
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - name: mongodb-data   # name of the mount point
+              mountPath: /data/db  # path inside the pod
+  volumeClaimTemplates:      # Volume clain information, PVC is creqated from this
+    - metadata:
+        name: mongodb-data    # name of the mount point must be the same as above
+      spec:
+        storageClassName: "gp2"  # storage class to be used gp2 is for aws
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi     # volume size

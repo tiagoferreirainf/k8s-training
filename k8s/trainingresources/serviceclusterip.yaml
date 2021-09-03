@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clusterip-service
+spec:
+  type: ClusterIP
+  selector:
+    app: MyApp #This label MUST match the label from your pods
+  ports:
+    - port: 80 # Port that is exposed by the service for other pods to communicate.
+      targetPort: 80 # Port that is being exposed by the containers in the matching pods

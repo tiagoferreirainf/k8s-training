@@ -1,0 +1,967 @@
+:docdir: ../appendices
+:icons: font
+:author: Tiago Ferreira
+:imagesdir: ./images
+:imagesoutdir: ./images
+//embedded images
+:data-uri:
+// empty line
+:blank: pass:[ +]
+// Toc
+:toc: macro
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 3
+// Variables
+:revnumber: 1.2
+:arrow: icon:angle-double-down[]
+:clear: pass:[<hr style="border:0;"/>]
+:box: pass:[<input type="checkbox" style="margin: 0.4em;" />]
+
+:ms_name: Kubernetes Training Fundamentals
+
+image::shared/header.png[]
+
+= {ms_name}
+Author: Tiago Ferreira
+
+v{revnumber}, {docdate}
+
+<<<
+
+.Change Log
+[%header,cols=3*]
+|===
+| Version
+| Date
+| Changes
+
+| 1.0
+| February/2021
+| Initial Version
+
+| 1.1
+| March/2021
+| Update training document to use aws instead of minikube
+
+| 1.2
+| April/2021
+| Update ingress to networking.k8s.io/v1
+
+|===
+
+toc::[]
+
+<<<
+
+== Introduction
+
+This tutorial contains all relevant information to help during the exercises that we will be executing during these sessions.
+Some of these exercises are based on CKAD exam.
+
+
+== Tooling & Environment setup
+Install the following tooling in your machine
+
+* *aws-cli* -  https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+* *kubectl* - https://kubernetes.io/docs/tasks/tools/install-kubectl/
+
+=== Cluster configuration
+
+==== Configure aws-cli
+Prepare aws-cli to connect to aws training account using the provided access keys
+[source,bash]
+----
+# validate aws installation
+$ aws help
+
+# configure aws to use training account
+$ aws configure
+# AWS Access Key ID : <<AccessKey>>
+# AWS Secret Access Key : <<AccessToken>>
+# Default region name : eu-west-1
+# Default output format: json
+
+$ aws sts get-caller-identity
+----
+
+==== Install kubectl
+Install kubectl on your machine and validate instalation using the following commands
+[source,bash]
+----
+# Check installed version
+$ kubectl version
+
+# Help
+$ kubectl help
+----
+
+==== Configure kubectl to use training EKS
+
+Run the following comand to configure kubectl to use EKS cluster, this command will automatically add the cluster configuration to kubectl config.
+[source,bash]
+----
+# Check installed version
+$ aws eks --region eu-west-1 update-kubeconfig --name <<cluster_name>>
+
+----
+
+.Examples of useful commands to configure and validate kube config
+[source,bash]
+----
+# Help
+$ kubectl help
+
+# Retrieve current cluster information
+$ kubectl cluster-info
+
+# List all clusters
+$ kubectl config get-clusters
+
+# Get current context
+$ kubectl config current-context
+
+# List configurable context, notice the default namespace
+$ kubectl config get-contexts
+
+# Change configurable context
+$ kubectl config use-context CONTEXT_NAME
+----
+
+=== Namespaces
+Namespaces are a way to divide cluster resources between multiple users or applications.
+
+The names of objects need to be unique within a namespace, but not between namespaces.
+A Namespace cannot be nested inside one another and each k8s object can only be in one namespace.
+
+[source, sh]
+----
+# Change the default namespace in the current context (use studentX)
+$ kubectl config set-context --current --namespace=NAMESPACE
+----
+
+.Additional commands for namespace management
+[source,sh]
+----
+# List all namespaces
+$ kubectl get namespaces
+
+# List all namespaces
+$ kubectl get namespaces
+
+# Create a new namespace
+$ kubectl create namespace NAMESPACE
+
+#Target a different namespace
+$ kubectl -n NAMESPACE get pods
+----
+
+== K8s Object Management
+
+There are multiple objects that can be used and deployed in the Kubernetes environment, and depending on the K8s version different
+objects will be available.
+
+[source,sh]
+----
+# Print the supported API objects on the server
+# notice than some k8s objects are namespaced while others are not
+$ kubectl api-resources
+
+# Print the support versions for API objects
+$ kubectl api-versions
+----
+
+There are two ways to manipulate kubernetes objects:
+
+* *Imperative commands* - using kubectl commands to create and define resources.
+* *Imperative object configuration* - using a configuration files (either in yaml/json)
+with the object definitions and required instructions.
+
+
+== Pod
+
+A pod is a single and smallest schedule unit of work.Each pod can exist in one single Worker node, and is not transferable.
+However, each pod can have more than one running containers, that share the same node resources and shares the same unique IP address.
+
+=== Create a pod
+
+[source,sh]
+----
+# Create an nginx pod using the cli only
+$ kubectl run nginx --image=nginx --restart=Never
+----
+
+Let's extract the necessary yaml configuration from the previous nginx pod
+
+[source,sh]
+----
+# Create an nginx pod using the cli only
+$ kubectl run nginx --image=nginx --restart=Never --dry-run=client -o yaml > nginx.yaml
+----
+
+If you start create other k8s objects and compared them with each other you will find that a pattern exists and there are
+a set of configurations that are mandatory and exists in ALL object definitions, they are the fields mentioned bellow:
+
+[source,yaml]
+----
+apiVersion: v1   # Which version of the Kubernetes API you're using to create this object
+kind: Pod        # What kind of object you want to create
+metadata:        # Data that helps uniquely identify the object, name string, labels, namespace
+  labels:
+    run: nginx
+  name: nginx
+spec:            # Configuration of the object you are creating
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}       # Populated afterward when object is deployed in the cluster
+----
+
+=== Delete a pod
+
+[source,sh]
+----
+# Delete specific object by object name
+$ kubectl delete pod POD_NAME
+
+# Delete all objects of a kind
+$ kubectl delete pod --all
+----
+
+
+=== List and get pods
+
+[source,sh]
+----
+# Get existing objects
+$ kubectl get pods
+
+# Get detailed information about existing objects (yaml definition)
+$ kubectl get pod POD_NAME -o wide --show-labels
+
+# Get detailed information about existing objects (yaml definition)
+$ kubectl get pod POD_NAME -o yaml
+----
+
+=== Editing a pod
+Beside some small changes (labels and annotations) it is not possible to change a running pod, and change any property of
+the spec is not allowed.
+A pod does not retain any workload and if an edition is required then a new pod needs to be started.
+
+=== Labels and Annotations
+Both are key-value pairs, meant to add metadata to a Kubernetes object, however they have differences purposes.
+
+*Labels* serve to identify objects within kubernetes clusters and are a used by selector queries
+or within selector sections in object definitions.In other words, they are used by kubernetes to identify and
+select objects and execute actions against them.
+
+
+*Annotations* are used for non-identifying information and are not use by the kubernetes cluster itself.Although,
+deployed applications or other external tooling can use them.
+
+[source,sh]
+----
+# Create three instances of nginx pod and set a label
+$ kubectl run nginx1 --image=nginx --restart=Never --labels=app=v1
+$ kubectl run nginx2 --image=nginx --restart=Never --labels=app=v1
+$ kubectl run nginx3 --image=nginx --restart=Never --labels=app=v1
+----
+
+[source,sh]
+----
+# Show all labels
+$ kubectl get pods --show-labels
+
+# Edit a label of a pod
+$ kubectl label pod nginx2 app=v2 --overwrite
+
+# Find a pod filtered by a label
+$ kubectl get pod -l app=v2
+----
+
+== Deployment and ReplicaSet
+A Deployment provides declarative updates for Pods and ReplicaSets.
+
+[source,sh]
+----
+# Lets create the basic nginx deployment definition
+# (the version is important for this exercise)
+$ kubectl create deployment nginx --image=nginx:1.7.8 --dry-run=client -o yaml > nginx_deploy.yaml
+
+# Apply generated yaml file to the cluster
+$ kubectl apply -f nginx_deploy.yaml
+
+#List existing deployments
+$ kubectl get deploy
+
+#Get created pod, notice the name
+$ kubectl get pod
+----
+
+When a deployment is created in the cluster, two additional objects are created as well.
+The first object is the replica set, the replica set only has one job, guarantee that the number of active running pods
+is according to what is desired.
+The second object is the pods, each pod is created based on the pod template spec defined in the deployment.
+
+[source,sh]
+----
+# Get all deployed objects
+$ kubectl get all
+----
+
+It is possible to notice, that each pod has a different name, this name is a composition of different metadata.
+
+[source,sh]
+----
+${Deployment_Name}-${ReplicaSet_ID}-${Random_alphanumeric}
+# example: nginx-68f5cd9798-qgpv8
+----
+
+=== Scaling a deployment
+There are two ways to quickly adjust the number of replicas (pods) of a deployment.
+
+[source,sh]
+----
+# Edit the number of replicas of a running deployment, change the file and save it
+$ kubectl edit deploy DEPLOYMENT_NAME
+
+# Run the command
+$ kubectl scale deploy DEPLOYMENT_NAME --replicas=X
+----
+
+=== Rollout and Rollback
+
+In a simple sentence Rollout means deploy a new version of the Deployment Object while Rollback is to revert to a previous version
+of this Deployment Object.
+
+[source,sh]
+----
+# Check the current rollout status of the Deployment
+$ kubectl rollout status deploy DEPLOYMENT_NAME
+
+# Edit the version name or any other part of the deployment template
+$ kubectl edit deploy DEPLOYMENT_NAME
+
+# If using nginx of the previous exercise, can also use
+$ kubectl set image deploy nginx nginx=nginx:1.7.9
+
+# Quickly run the command, and watch whats happening
+$ kubectl get pods -w
+----
+
+Check the rollout status once again and notice the differences.
+
+[source,sh]
+----
+# Get the history version of the deployment
+$ kubectl rollout history deploy nginx
+
+# Get all deployed objects, there are  2 versions of a replica set (one for each version)
+$ kubectl get all
+----
+
+Lets Rollback to the previous version
+
+[source,sh]
+----
+# Get the current status of the new version
+$ kubectl rollout status deploy nginx
+
+# Get all deployed objects
+$ kubectl get all
+----
+
+Let's change the image to a wrong version and watch deployment fail
+
+[source,sh]
+----
+# If using nginx of the previous exercise, can also use
+$ kubectl set image deploy nginx nginx=nginx:6.6.6
+
+# Check the status
+$ kubectl rollout status deploy nginx
+----
+
+[source,sh]
+----
+# If using nginx of the previous exercise, can also use
+$ kubectl rollout history deploy nginx
+
+# Check the details of what changed between versions
+$ kubectl rollout history deploy nginx --revision=3
+$ kubectl rollout history deploy nginx --revision=4
+
+$ Rollback to a specific version
+kubectl rollout undo deploy nginx --to-revision=2
+
+# Quickly run the command, and watch whats happening
+$ kubectl get pods -w
+----
+
+=== Rolling Update Strategies
+https://www.golinuxcloud.com/kubernetes-rolling-update/
+
+
+== Managing Resources for containers
+
+If no resources are defined for each container kubernetes will let the pod use all resources
+that it has available, but a pod a container can only access resources of the node where it was schedule, so there is the risk
+that there are not enough resources available, either for the minimum necessary resources for the normal execution of the container
+neither for the maximum necessary resources for a peak scenario, resulting in an Out-of-memory exception.
+
+
+=== Requests and Limits
+If the node where a Pod is running has enough of a resource available, it's possible (and allowed) for a container to use more resource than its request for that resource specifies.
+However, a container is not allowed to use more than its resource limit.
+
+=== Resources type
+Each pod can reserve resources types, we will focus on RAM and vCPU. To define these resources it is necessary to add the resource
+property to the container definition in the template spec of a Deployment (or spec of a pod), check the example bellow.
+
+[source,yaml]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        resources:
+          # The minimum resources that node should have available to schedule this pod
+          requests:
+            memory: 250Mi
+            cpu: 100m
+          # The maximum resources that node should have to schedule,
+          # and container cannot surpass
+          limits:
+            memory: 500Mi
+            cpu: 200m
+----
+
+The CPU unit “m” stands for “millicpu”, and 1vCPU equals 1000 millicpu, while memory unit “Mi” stands for “mebibyte”.
+
+== Networking
+=== Services
+A K8s service is a REST object, that is both an abstraction that defines a logical set of pods and a policy for accessing the pod set.
+
+This Services are constituted by a set of properties:
+
+* A label selector that will be used by the service to target the matching pods (labels)
+* An IP address assigned automatically, that the service proxies will use.
+* A set of mapping ports, constituted by incoming port (exposed by the service), and a targetPort (ports exposed by the pods)
+
+Services support https://pt.wikipedia.org/wiki/Transmission_Control_Protocol[TCP] (default),
+https://pt.wikipedia.org/wiki/User_Datagram_Protocol[UDP] and https://en.wikipedia.org/wiki/Stream_Control_Transmission_Protocol[SCTP] for protocols.
+
+==== ClusterIP
+This is the default service type.  It exposes the service with a cluster-internal IP.
+This service can only be reached only from within the cluster, meaning that this service is normally only used in internal communications between pods.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Service
+metadata:
+  name: clusterip-service
+spec:
+  type: ClusterIP
+  selector:
+    app: MyApp #This label MUST match the label from your pods
+  ports:
+    - port: 80 # Port that is exposed by the service for other pods to communicate.
+      targetPort: 80 # Port that is being exposed by the containers in the matching pods
+----
+
+==== NodePort
+This type of service exposes the service on each worker node’s IP at a static port (range: 30000-32767).
+A ClusterIP service is created automatically, and the NodePort service will route to it.
+From outside the cluster, you can contact the NodePort service by using “<NodeIP>:<NodePort>”.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodeport-service
+spec:
+  type: NodePort
+  selector:
+    app: MyApp #This label MUST match the label from your pods
+  ports:
+    - port: 80 # Port that is exposed by the service and the browser/apps will use to communicate.
+      targetPort: 80 # Port that is being exposed by the containers in the matching pods
+      nodePort: 30007 # Port that will be open in the worker node's, it is Optional if not defined will be defined by k8s.
+----
+
+==== LoadBalancer
+This service type exposes the service externally using the load balancer of your cloud provider.
+Your cloud provider will associate a reachable IP address from outside automatically, it will also create a set of proxies to route the requests to the respective apps.
+
+This type of services are normally used to expose a single ip to the world and redirect all network
+traffic to a load balancer controller (i.e nginx, haproxy etc) that together with the ingress rules,
+will distribute this traffic to a set of clusterIp services.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+----
+
+=== Endpoints
+Endpoints track the IP Addresses of the pods the service will send traffic to.
+When a service selector matches a pod label, that IP Address is added to the endpoint list.
+
+It is also possible to have endpoints that point to a server outside of your cluster or in a different
+namespace (we will not cover it on these sessions).
+
+
+[source,bash]
+----
+# Get list of endpoints
+$ kubectl get endpoints
+
+# Get the detail of the endpoint
+$ kubectl describe endpoint SERVICE_NAME
+
+# Lets scale the nginx deployment and see whats happen
+----
+
+=== Ingress
+Ingress exposes HTTP and HTTPS routes from outside the cluster to services within the cluster.
+Traffic routing is controlled by rules defined on the Ingress resource.
+
+An Ingress may be configured to give Services externally-reachable URLs, load balance traffic, terminate SSL / TLS,
+and offer name-based virtual hosting.
+
+The advantage of an Ingress over a LoadBalancer or NodePort service is that an Ingress can consolidate routing rules in a single resource to expose multiple services.
+
+==== Ingress controller
+
+In order for the Ingress resource to work, the cluster must have an ingress controller running.
+The Ingress controller is an application that runs in a cluster (in a pod) and configures an HTTP load balancer according to Ingress resources.
+The load balancer can be a software load balancer running in the cluster or a hardware or cloud load balancer running externally.
+Different load balancers require different Ingress controller implementations.
+
+*AWS ALB* - https://kubernetes-sigs.github.io/aws-load-balancer-controller/guide/ingress/annotations/
+
+*Nginx-Ingress* - https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
+
+.Example of a ingress resource for ALB
+[source,yaml]
+----
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    #name of the ingress controller alb, nginx, etc
+    kubernetes.io/ingress.class: alb
+    #Annotations bellow are used and specific for the ingress controller
+    alb.ingress.kubernetes.io/group.name: minimal
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  name: minimal
+  namespace: student1
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: clusterip-service
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
+----
+
+== Configuration
+=== Config Maps
+ConfigMaps allow you to decouple configuration artifacts from the container image. This allows the application to be portable and independent of the environment.
+Configmaps store all this configurations in key-value pairs.
+
+.Example of a simple configmap
+[source, yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-cm
+data:
+  # property-like keys; each key maps to a simple value
+  run_mode: "production"
+  # file-like keys
+  application.properties: |
+    logging.level.root=INFO
+    logging.level.org.springframework.web=INFO
+    loggins.folder: ./logs
+----
+
+.Example of pod using a configmap
+[source, yaml]
+----
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+    - name: demo
+      image: alpine
+      command: ["sleep", "3600"]
+      env:
+        # Using a configmap in a environment variable
+        - name: APPLICATION_RUN_MODE # name of the environment variable
+          # from the key name in the ConfigMap.
+          valueFrom:
+            configMapKeyRef:
+              name: application-cm    # The ConfigMap this value comes from.
+              key: run_mode           # The key to fetch.
+      volumeMounts:
+        - name: config                #Create a mount point called config in a path
+          mountPath: "/config"
+          readOnly: true
+  volumes: # You set volumes at the Pod level, then mount them into containers inside that Pod
+    - name: config   # Name must match the one in the volumeMounts
+      configMap:
+        name: application-cm # Name of the ConfigMap you want to mount.
+        # An array of keys from the ConfigMap to create as files
+        items:
+          - key: "application.properties"   # name of the key in the configmap
+            path: "application.properties"  # name of the file that will be created in the mount path
+----
+
+[source,bash]
+----
+# Enter in the container
+$ kubectl exec -it configmap-pod -- sh
+
+# Lets print the environment variable to check ours
+$ printenv
+
+# Check the config file application.properties
+$ cat /config/application.properties
+----
+
+IMPORTANT: If a configmap is not correctly defined in the pod configuration,
+the pod will not start and will be stuck in "ContainerCreating".
+
+
+=== Secrets
+
+A Kubernetes secret is an object storing sensitive pieces of data such as usernames, passwords, tokens, and keys.
+Secrets are created by the system during an app installation or by users whenever they need to store sensitive information and make it available to a pod.
+
+There are multiple types of secrets to be used for different situations, such as docker pulling, basic authentication, SSL or just to hide sensitive data (Opaque)
+
+Check official documentation to full explanation and examples, https://kubernetes.io/docs/concepts/configuration/secret/
+
+.Example of a opaque secret
+[source, yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: application-secret
+type: Opaque # being opaque means that values in the key-value pair is base64 encoded
+data:
+  username: YWRtaW4=
+  password: YWRtaW4=
+----
+
+.Example of using a secret in a pod
+[source, yaml]
+----
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-pod
+spec:
+  containers:
+    - name: demo
+      image: alpine
+      command: ["sleep", "3600"]
+      env:
+        # Using a secret in a environment variable
+        - name: USERNAME # name of the environment variable
+          # from the key name in the ConfigMap.
+          valueFrom:
+            secretKeyRef:
+              name: application-secret    # The secret name
+              key: username           # The key to use.
+      volumeMounts:
+        - name: config                #Create a mount point called config in a path
+          mountPath: "/config"
+          readOnly: true
+  volumes: # You set volumes at the Pod level, then mount them into containers inside that Pod
+    - name: config   # Name must match the one in the volumeMounts
+      secret:
+        secretName: application-secret # Name of the secret you want to mount.
+        # An array of keys from the secret to create as files
+        items:
+          - key: "password"   # name of the key in the configmap
+            path: "password"  # name of the file that will be created in the mount path
+            mode: 0777  # permissions of the file (minimum required and only for specific users is advised)
+----
+
+IMPORTANT: When configmap is edited the changes will not be automatically updated in a running pod,
+however a secret will (after a few seconds) be updated (there are exceptions depending on secret type).
+
+
+== Persistence
+By default all pods have an ephemeral storage and when the containers are stopped all workload and data is lost.
+
+One possible solution, is to provision external volumes and create mount points in the containers to access the data.
+However, with scaling applications it would be very difficult to preserve the workloads and data to the respective pod
+between up and down scaling the applications.
+
+In order to solve this, the following entities are available.
+
+=== Stateful Set
+
+As explained before Deployemnts/ReplicaSets create multiple pod replicas from a single pod template.
+StatefulSets are similar in operation, but they include a volume, which refers to a specific PersistentVolumeClaim,
+all replicas of the ReplicaSet will use the exact same PersistentVolumeClaim and therefore the same PersistentVolume bound by the claim.
+
+Each pod created by a StatefulSet is assigned an ordinal index (zero-based),
+which is then used to derive the pod’s name and hostname, and to attach stable storage to the pod.
+
+When a pod instance managed by a StatefulSet disappears, the StatefulSet makes sure it’s replaced with a new instance similar to how ReplicaSets do it.
+But in contrast to ReplicaSets, the replacement pod gets the same name and hostname as the pod that has disappeared.
+
+=== Persistent volume and Persistent volume clain
+A PersistentVolume (PV) is a piece of storage in the cluster that has been provisioned by an administrator or dynamically provisioned using Storage Classes.
+PVs have a lifecycle independent of any individual Pod that uses the PV, meaning that the deletion of a pod does not result in the deletion of the PV.
+
+A PersistentVolumeClaim (PVC) is a request for storage by a user. These Claims can request specific size and access modes to the volumes (PV).
+
+Each PV gets its own set of access modes describing that specific PV's capabilities:
+
+* ReadWriteOnce - the volume can be mounted as read-write by a single node
+* ReadOnlyMany - the volume can be mounted read-only by many nodes
+* ReadWriteMany - the volume can be mounted as read-write by many nodes
+
+
+=== StorageClass
+
+StorageClasses are a prerequisite for dynamic storage provisioning. They are an interface for defining storage requirements of a pod – not an implementation,
+the implementation must be performed by a provisioner that understand how to apply this StorageClass.
+
+Each cloud provider, has different provisioners and different volume types, and consequently there will be different storage classes for each cloud provider.
+Additionally, it is common that different PersistentVolumes with different capabilities are required depending on the situation, ex: SSD vs HDD or different IOPS.
+
+https://v1-18.docs.kubernetes.io/docs/concepts/storage/storage-classes/
+
+[source, yaml]
+----
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sts-mongo
+  labels:
+    app: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  serviceName: service-mongo  # name of the service that will be used
+  replicas: 1
+  #manages pod sequentially and are removed in reverse order, it can be "parallel"
+  podManagementPolicy: "OrderedReady"
+  revisionHistoryLimit: 10
+  updateStrategy:
+    #rollingupdate or recreate
+    type: "RollingUpdate"
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      #Always, OnFailure, and Never
+      restartPolicy: "Always"
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: mongo
+          image: "docker.io/mongo:4.2"
+          #Always, IfNotPresent
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - name: http
+              containerPort: 27017
+              protocol: TCP
+          resources: {}
+          volumeMounts:
+            - name: mongodb-data   # name of the mount point
+              mountPath: /data/db  # path inside the pod
+  volumeClaimTemplates:      # Volume clain information, PVC is creqated from this
+    - metadata:
+        name: mongodb-data    # name of the mount point must be the same as above
+      spec:
+        storageClassName: "gp2"  # storage class to be used gp2 is for aws
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi     # volume size
+----
+
+== Pod lifecycle
+=== Pod Phases
+The phase of a Pod is a simple, high-level summary of where the Pod is in its lifecycle.
+
+There are multiple Pod Phase:
+
+* Pending -  The Pod has been accepted by the Kubernetes system, but one or more of the Container images has not been created, i.e, not enough resources or issues in pvc/pv.
+* ContainerCreating -  Pod is downloading images and initiating containers.
+* Running -  The Pod has been bound to a node, and all of the Containers have been created. At least one Container is still running, or is in the process of starting or restarting.
+* Succeeded -  All Containers in the Pod have terminated in success, and will not be restarted.
+* Failed -  All Containers in the Pod have terminated, and at least one Container has terminated in failure.
+* Unknown -  For some reason the state of the Pod could not be obtained, typically due to an error in communicating with the host of the Pod.
+* CrashLoopBackoff -  When the containers inside the pod get failed to start then the pod is being recreated again and again.
+* ImagePullBackOff -  Kubernetes could not download at least one of the required images.
+
+=== Probes
+==== LivenessProbe
+Indicates whether the Container is still running. If the liveness probe fails, the kubelet kills the Container, and the Container is subjected to its restart policy.
+If a Container does not provide a liveness probe, the default state is always Success.
+
+==== ReadinessProbe
+Indicates whether the Container is ready to service requests. If the readiness probe fails, the endpoints controller removes the Pod's IP address
+from the endpoints of all Services that match the Pod.
+The default state of readiness before the initial delay is Failure. If a Container does not provide a readiness probe, the default state is Success.
+
+.Example of a Command probe
+[source, yaml]
+----
+readinessProbe: # other option is LivenessProbe
+  exec:       # probe that will execute a command inside a container
+    command:
+      - mongo
+      - --eval
+      - "db.adminCommand('ping')"
+  initialDelaySeconds: 30   # number of seconds to wait before initiating liveness or readiness probes
+  periodSeconds: 30         # interval of time that probe will run
+  timeoutSeconds: 3         # number of seconds before marking the probe as timing out (failing the health check)
+  successThreshold: 1       # minimum number of consecutive successful checks for the probe to pass
+  failureThreshold: 10      # number of retries before marking the probe as failed.
+  # For liveness probes, this will lead to the pod restarting.
+  # For readiness probes, this will mark the pod as unready.
+----
+
+.Example of a HTTP Probe
+[source, yaml]
+----
+livenessProbe:             # other option is readinessProbe
+  httpGet:
+    path: /healthz         # path on the HTTP/S server
+    port: 8080             # name or number of the port to access the server
+    scheme: https          # protocol, default is http
+    httpHEaders:           # custom headers if you need header values for authentication, CORS settings, etc
+    - name: Custom-Header
+      value: Awesome
+    host: 10.0.1.27        # hostname to connect, normally not defined since it will use own ip as default
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 10
+----
+
+.Example of a TCP Probe
+[source, yaml]
+----
+livenessProbe:
+  tcpSocket:
+    port: 22    # port to establish tcp connetion
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 10
+----
+
+== Multi-containers and init containers
+
+A Pod can have multiple containers running apps within it and this is technically called a *multi-container pod*.
+
+But the pod can also have one or more init containers.
+Init containers can be used to set up custom code that is not present in an app image or to provide a mechanism to delay
+the main container startup until a set of preconditions are met.
+
+Init containers are run before the app containers are started and always run to completion
+and each init container must complete successfully before the next one starts. The main difference between normal containers and InitContainers is that
+InitContainers do not support lifecycle, livenessProbe, readinessProbe.
+
+.Example init container
+[source, yaml]
+----
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-initcontainer
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: main-container
+    image: busybox
+    command: ['sh', '-c', 'echo Inside the main-container! && sleep 36000']
+  initContainers:
+  - name: init-container-1
+    image: busybox
+    command: ['sh', '-c', 'echo Inside init-container-1 start; sleep 15;echo init-container-1 completed;']
+  - name: init-container-2
+    image: busybox
+    command: ['sh', '-c', 'echo Inside init-container-2 start; sleep 15;echo init-container-2 completed;']
+----
+
+[source, sh]
+----
+# validate number of init containers
+$ kubectl get pods
+# output should be something like
+# initcontainer-pod        0/1     Init:0/2   0          6s
+
+# validate logs of each init container
+$ kubectl logs initcontainer-pod -c init-container-1 --timestamps=true
+$ kubectl logs initcontainer-pod -c init-container-2 --timestamps=true
+$ kubectl logs initcontainer-pod --timestamps=true
+
+# validate init containers information
+$ kubectl describe pod initcontainer-pod
+----
+
+// == Observability
+// === Logging
+// === Debugging
+// === Metrics
+// ==== External tooling
+
+
+// == AutoScaling
+// kubectl autoscale deployment.v1.apps/nginx-deployment --min=10 --max=15 --cpu-percent=80

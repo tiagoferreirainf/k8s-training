@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-cm
+data:
+  # property-like keys; each key maps to a simple value
+  run_mode: "production"
+  # file-like keys
+  application.properties: |
+    logging.level.root=INFO
+    logging.level.org.springframework.web=INFO
+    loggins.folder: ./logs
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+    - name: demo
+      image: alpine
+      command: ["sleep", "3600"]
+      env:
+        # Using a configmap in a environment variable
+        - name: APPLICATION_RUN_MODE # name of the environment variable
+          # from the key name in the ConfigMap.
+          valueFrom:
+            configMapKeyRef:
+              name: application-cm    # The ConfigMap this value comes from.
+              key: run_mode           # The key to fetch.
+      volumeMounts:
+        - name: config                #Create a mount point called config in a path
+          mountPath: "/config"
+          readOnly: true
+  volumes: # You set volumes at the Pod level, then mount them into containers inside that Pod
+    - name: config   # Name must match the one in the volumeMounts
+      configMap:
+        name: application-cm # Name of the ConfigMap you want to mount.
+        # An array of keys from the ConfigMap to create as files
+        items:
+          - key: "application.properties"   # name of the key in the configmap
+            path: "application.properties"  # name of the file that will be created in the mount path
