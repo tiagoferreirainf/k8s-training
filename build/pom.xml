@@ -12,7 +12,8 @@
 
     <modules>
         <module>../usermanagement</module>
-        <module>../dockerimage</module>
+        <module>../dockerimages/usermanagement</module>
+        <module>../dockerimages/waitforit</module>
     </modules>
 
 </project>

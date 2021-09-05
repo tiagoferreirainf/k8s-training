@@ -8,7 +8,7 @@ spec:
   selector:
     matchLabels:
       app: mongo
-  serviceName: service-mongo  # name of the service that will be used
+  serviceName: client-mongodb-sc  # name of the service that will be used
   replicas: 1
   #manages pod sequentially and are removed in reverse order, it can be "parallel"
   podManagementPolicy: "OrderedReady"
@@ -41,7 +41,7 @@ spec:
     - metadata:
         name: mongodb-data    # name of the mount point must be the same as above
       spec:
-        storageClassName: "gp2"  # storage class to be used gp2 is for aws
+        storageClassName: "standard"  # storage class to be used gp2 is for aws
         accessModes:
           - "ReadWriteOnce"
         resources:
