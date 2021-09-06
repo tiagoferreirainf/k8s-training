@@ -11,8 +11,8 @@
         <relativePath/>
     </parent>
 
-    <groupId>org.example</groupId>
-    <artifactId>userdocker</artifactId>
+    <groupId>tf.k8straining</groupId>
+    <artifactId>reservationdocker</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -21,7 +21,7 @@
         <spotify.dockerfile.version>1.4.13</spotify.dockerfile.version>
         <application.version>1.0-SNAPSHOT</application.version>
         <dockerio.registry>tiagoferreira2018</dockerio.registry>
-        <dockerio.name>usermngdemo</dockerio.name>
+        <dockerio.name>bookmngdemo</dockerio.name>
     </properties>
 
     <build>
@@ -40,8 +40,8 @@
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
-                                    <groupId>com.example</groupId>
-                                    <artifactId>usermanagement</artifactId>
+                                    <groupId>tf.k8straining</groupId>
+                                    <artifactId>bookmanagement</artifactId>
                                     <version>${application.version}</version>
                                     <type>jar</type>
                                     <overWrite>true</overWrite>

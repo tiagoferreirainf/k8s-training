@@ -1,6 +1,0 @@
-main/java/com/example/usermanagement/validator/UserValidations.class
-main/java/com/example/usermanagement/SwaggerConfig.class
-main/java/com/example/usermanagement/entity/User.class
-main/java/com/example/usermanagement/UserManagementApplication.class
-main/java/com/example/usermanagement/UserController.class
-main/java/com/example/usermanagement/UserMongoRepository.class
