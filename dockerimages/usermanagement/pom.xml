@@ -40,7 +40,7 @@
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
-                                    <groupId>com.example</groupId>
+                                    <groupId>tf.k8straining</groupId>
                                     <artifactId>usermanagement</artifactId>
                                     <version>${application.version}</version>
                                     <type>jar</type>

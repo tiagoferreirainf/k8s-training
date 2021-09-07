@@ -9,7 +9,7 @@ spec:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-  type: LoadBalancer
+  type: ClusterIP
 
 ---
 
@@ -55,7 +55,7 @@ spec:
         - name: usermanagement
           image: "tiagoferreira2018/usermngdemo:1.0-SNAPSHOT"
           #Always, IfNotPresent
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: "Always"
           env:
             - name: MONGODB_HOST
               valueFrom:
@@ -67,6 +67,22 @@ spec:
                 configMapKeyRef:
                   name: usermanagement-cm
                   key: mongodbport
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            timeoutSeconds: 2
+            periodSeconds: 30
+            failureThreshold: 8
           ports:
             - name: http
               containerPort: 8080

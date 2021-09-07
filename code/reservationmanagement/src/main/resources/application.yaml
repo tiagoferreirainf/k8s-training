@@ -2,7 +2,7 @@ api:
   version: v1
 
 server:
-  port: 8082
+  port: 8080
 
 logging:
   level:
@@ -12,6 +12,18 @@ logging:
 
 # Swagger.ui url:
 #http://localhost:8080/swagger-ui.html
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    probes:
+      enabled: true
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
 
 #Mongo
 spring:

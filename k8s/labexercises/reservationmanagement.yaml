@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-reservationmanagement-sc
+spec:
+  selector:
+    app: reservationmanagement
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reservationmanagement-cm
+data:
+  # property-like keys; each key maps to a simple value
+  mongodbservice: "client-mongodb-sc"
+  mongodbport: "27017"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservationmanagement
+  labels:
+    app: reservationmanagement
+spec:
+  selector:
+    matchLabels:
+      app: reservationmanagement
+  replicas: 1
+  revisionHistoryLimit: 10
+  template:
+    metadata:
+      labels:
+        app: reservationmanagement
+    spec:
+      #Always, OnFailure, and Never
+      restartPolicy: "Always"
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: wait
+          image: "tiagoferreira2018/waitforit:latest"
+          args:
+            - /bin/sh
+            - -c
+            - /initcontainer/wait-for-it.sh "client-mongodb-sc:27017" -t 0
+      containers:
+        - name: reservationmanagement
+          image: "tiagoferreira2018/reservationmngdemo:1.0-SNAPSHOT"
+          #Always, IfNotPresent
+          imagePullPolicy: "Always"
+          env:
+            - name: MONGODB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: reservationmanagement-cm
+                  key: mongodbservice
+            - name: MONGODB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: reservationmanagement-cm
+                  key: mongodbport
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            timeoutSeconds: 2
+            periodSeconds: 30
+            failureThreshold: 8
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources: {}

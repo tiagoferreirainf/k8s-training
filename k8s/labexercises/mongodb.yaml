@@ -51,6 +51,28 @@ spec:
           volumeMounts:
             - name: mongodb-data   # name of the mount point
               mountPath: /data/db  # path inside the pod
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 8
+            exec:
+              command:
+              - mongo
+              - --eval
+              - "db.adminCommand('ping')"
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 8
+            exec:
+              command:
+              - mongo
+              - --eval
+              - "db.adminCommand('ping')"
   volumeClaimTemplates:      # Volume clain information, PVC is creqated from this
     - metadata:
         name: mongodb-data    # name of the mount point must be the same as above
